@@ -1,2 +1,10 @@
-# travelling-merchant
-Algorithm to find best way to travel in every points
+# Le marchand ambulant
+
+## Contexte du projet
+/
+
+## Les algorithmes utilisés
+/
+
+## Conclusion
+/
