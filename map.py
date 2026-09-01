@@ -27,6 +27,7 @@ db = db.dropna()
 print(f"\nDimensions du dataset après nettoyage : {db.shape}")
 print()
 
+"""
 # Fonction affichage carte
 def plot_map(df, title="Carte des villes de France"):
     plt.figure(figsize=(10, 7))
@@ -41,8 +42,7 @@ def plot_map(df, title="Carte des villes de France"):
 
 # Lancement de l'affichage carte
 plot_map(db)
-
-
+"""
 
 
 # Fonction affichage carte avec NetworkX
