@@ -1,7 +1,10 @@
 import networkx as nx
 from networkx.algorithms.approximation import traveling_salesman_problem
+import networkx.algorithms.approximation as nx_app
 from map import filtre_data, networkx_map, haversine_distance
 import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics.pairwise import haversine_distances
 
 # MST Construire l'arbre couvrant minimum
 # IMPAIRS Isoler les sommets de degré impar
@@ -9,14 +12,15 @@ import pandas as pd
 # CIRCUIT Eulérien puis Hamiltonien (parcourt chaque arête 1 fois, et chaque sommet 1 fois)
 
 db = pd.read_csv("villes_france_lat_long.csv", sep=",")
-a = filtre_data(db)
-b = networkx_map(db)    # Affichage de la map avec arête
+"""a = filtre_data(db)
+b = networkx_map(db)    # Affichage de la map avec arête"""
 
 # 1 Récupération des données
 for _ in range(len(db)):
     villes = list(zip(db['Latitude'], db['Longitude']))
     noms_villes = db['Ville'].tolist()
-
+print(f"Liste de coordonnées : {villes}")
+print(f"Liste des villes initiales : {noms_villes}")
 
 # 2 Récupération du graphe
 G = nx.complete_graph(len(villes))
@@ -28,6 +32,44 @@ for i in range(len(villes)):
 # 3 Christofides en 1 appel : NetworkX enchaîne MST + Couplage + Eulérien + Hamiltonnien
 circuit = traveling_salesman_problem(G, method=nx.approximation.christofides)
 
-#4 Distance totale du circuit obtenu
+# 4 Distance totale du circuit obtenu
 total = sum(G[circuit[i]][circuit[i+1]]['weight'] for i in range(len(circuit) - 1))
-print(f"Distance : {total:.2f} km - garantie <= 1,5 x optimum")     # Ca ne depassera pas le pire circuit, il sera bon mais pas le plus optimal possible
+print(f"\n\nDistance : {total:.2f} km - garantie <= 1,5 x optimum")     # Ca ne depassera pas le pire circuit, il sera bon mais pas le plus optimal possible
+
+print(f"\nLe meilleur circuit (en index) est : {circuit}")
+
+for i in range(len(villes) + 1):
+     circuit[i] = noms_villes[circuit[i]]
+
+print(f"\nLe meilleur circuit final est : {circuit}")
+print(G)
+print(G.nodes)
+
+
+# Graphique circuit final
+# Ajout des villes au graphe
+for index, row in db.iterrows():
+    G.add_node(row['Ville'], pos=(row['Longitude'], row['Latitude']))
+print(G)
+for i in range(len(db)):
+    for j in range(i + 1, len(db)):
+        distance = haversine_distance(db.iloc[i]['Latitude'], db.iloc[i]['Longitude'],
+                                    db.iloc[j]['Latitude'], db.iloc[j]['Longitude'])
+        G.add_edge(db.iloc[i]['Ville'], db.iloc[j]['Ville'], weight=distance)
+
+pos = nx.get_node_attributes(G, 'pos')
+print(pos)
+print(G.nodes)
+
+plt.figure(figsize=(12, 7))
+nx.draw(G, pos, node_size=50, alpha=0.7, edge_color='gray')
+plt.show()
+
+
+#nouveau graph orienté 
+#pos[0] = Paris(0,0)
+#for i in range(len(circuit))
+#add node 
+# [pos=villes[coords[circuit[i]],
+# label=villes[noms_villes[circuit[i]]]]
+#flèche (arrête) depuis le node précédent

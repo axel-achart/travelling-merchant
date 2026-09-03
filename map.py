@@ -81,7 +81,7 @@ def networkx_map(df):
 
     # Récupération des positions des noeuds
     pos = nx.get_node_attributes(G, 'pos')
-
+    print(pos)
     # Dessin du graphe
     plt.figure(figsize=(12, 7))
     nx.draw(G, pos, node_size=50, alpha=0.7, edge_color='gray')
