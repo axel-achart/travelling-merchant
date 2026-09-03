@@ -9,11 +9,11 @@ from math import radians, sin, cos, sqrt, atan2
 # 2. Affichage de la carte des villes de France sans distance avec matplotlib.
 # 3. Affichage de la carte des villes de France avec distances calculées à l'aide de la formule de Haversine et NetworkX.
 
-db = pd.read_csv("villes_france_lat_long.csv", sep=",")
-
-def recup_data():
+def filtre_data(db):
     # Description du dataset
     print(f"Dimensions du dataset : {db.shape}")
+    print()
+    print(db.describe)
     print()
     print(f"Colonnes du dataset : \n{db.dtypes}")
     print()
@@ -43,25 +43,25 @@ def recup_data():
 
 
 def haversine_distance(lat1, lon1, lat2, lon2):
-    # Rayon de la Terre en kilomètres
-    R = 6371.0
+        # Rayon de la Terre en kilomètres
+        R = 6371.0
 
-    # Conversion des coordonnées en radians
-    lat1_rad = radians(lat1)
-    lon1_rad = radians(lon1)
-    lat2_rad = radians(lat2)
-    lon2_rad = radians(lon2)
+        # Conversion des coordonnées en radians
+        lat1_rad = radians(lat1)
+        lon1_rad = radians(lon1)
+        lat2_rad = radians(lat2)
+        lon2_rad = radians(lon2)
 
-    # Calcul des différences
-    dlon = lon2_rad - lon1_rad
-    dlat = lat2_rad - lat1_rad
+        # Calcul des différences
+        dlon = lon2_rad - lon1_rad
+        dlat = lat2_rad - lat1_rad
 
-    # Formule de Haversine
-    a = sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2)**2
-    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        # Formule de Haversine
+        a = sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2)**2
+        c = 2 * atan2(sqrt(a), sqrt(1 - a))
 
-    distance = R * c
-    return distance
+        distance = R * c
+        return distance
 
 
 def networkx_map(df):
@@ -87,8 +87,5 @@ def networkx_map(df):
     nx.draw(G, pos, node_size=50, alpha=0.7, edge_color='gray')
     for i, txt in enumerate(df['Ville']):
             plt.text(df['Longitude'].iloc[i] + 0.1, df['Latitude'].iloc[i], txt, fontsize=10)
-    plt.title("Carte des villes de France avec NetworkX")
+    plt.title("Carte des villes de France")
     plt.show()
-
-    # Lancement de l'affichage carte NetworkX
-    networkx_map(db)

@@ -4,7 +4,7 @@ def fitness(tour, distances):
     return sum(distances[tour[i]][tour[i+1]] for i in range(len(tour)-1))
 
 def selection(pop, distances, k=3):
-    # Tournoi : on tire k inidvidus, on garde le meilleur
+    # Tournoi : on tire k individus, on garde le meilleur
     return min(random.sample(pop, k), key=lambda t: fitness(t, distances))
 
 def order_crossover(p1, p2):
@@ -72,4 +72,14 @@ def afficher_parcours(tour, villes, distance):
     x, y = zip(*tour_coords)
 
     plt.figure(figsize=(8, 6))
-    plt.plot(x, y, marker='o', linestyle='-', color='b')
+    plt.plot(x, y, marker='o', linestyle='-', color='b', markerfacecolor='r')
+
+    # numéroter les villes
+    for i, (cx, cy) in enumerate(villes):
+        plt.text(cx + 1.5, cy + 1.5, str(i), fontsize=10, color='darkred')
+
+    plt.title(f"Résultat du Voyageur de Commerce (Distance:  {distance:.2f})")
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.show()
+
+afficher_parcours(meilleur_parcours, villes, meilleure_distance)
