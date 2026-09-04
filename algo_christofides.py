@@ -31,8 +31,14 @@ for i in range(len(noms_villes)):
 
 
 pos = nx.get_node_attributes(G,'pos')
+
 circuit = traveling_salesman_problem(G, method=nx.approximation.christofides)
 print(circuit)
+
+# Distance totale
+total = sum(G[circuit[i]][circuit[i+1]]['weight'] for i in range(len(circuit)- 1 ))
+print(f"Distance : {total:.2f} km - garantie <= 1,5 x optimum")
+
 plt.figure(figsize=(12,7))
 nx.draw(
     G,
