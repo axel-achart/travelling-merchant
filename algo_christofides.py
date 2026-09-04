@@ -15,8 +15,10 @@ import numpy as np
 
 
 db = pd.read_csv("villes_france_lat_long.csv", sep=",")
-"""a = filtre_data(db)
-b = networkx_map(db)    # Affichage de la map avec arête"""
+"""
+a = filtre_data(db)
+b = networkx_map(db)    # Affichage de la map avec arête
+"""
 
 
 # Récupération des données et mise en dictionnaire
