@@ -103,8 +103,9 @@ def main():
     # On superpose l'itinéraire trouvé en rouge, plus épais, pour le mettre en valeur.
     aretes_itineraire = [(itineraire[i], itineraire[i + 1])
                          for i in range(len(itineraire) - 1)]
-    nx.draw_networkx_edges(G, pos, edgelist=aretes_itineraire,
-                           edge_color='red', width=2)
+    H = nx.DiGraph()
+    H.add_edges_from(aretes_itineraire)
+    nx.draw_networkx_edges(H, pos, edge_color='red', width=2, arrowstyle='-|>', arrowsize=10)
 
     plt.title(f"Tournée du marchand — {distance_totale:.2f} km")
     plt.show()
