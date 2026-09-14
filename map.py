@@ -1,91 +1,97 @@
-from matplotlib.pylab import radians
-import matplotlib.pyplot as plt
 import pandas as pd
 import networkx as nx
-from math import radians, sin, cos, sqrt, atan2
+import numpy as np
+import matplotlib.pyplot as plt
 
+# ---------------------------------------------------------------------------
+# 1. Import du fichier CSV /les colonnes : Ville, Latitude, Longitude.
+# ---------------------------------------------------------------------------
+df = pd.read_csv('villes_france_lat_long.csv')
 
-# 1. Chargement et nettoyage rapide du dataset des villes de France avec leurs coordonnées géographiques (latitude et longitude).
-# 2. Affichage de la carte des villes de France sans distance avec matplotlib.
-# 3. Affichage de la carte des villes de France avec distances calculées à l'aide de la formule de Haversine et NetworkX.
+# ---------------------------------------------------------------------------
+# 2. Fonction haversine : calcul de la distance réelle entre deux points
+#    sur la Terre à partir de leurs coordonnées (latitude, longitude).
+# ---------------------------------------------------------------------------
+def haversine(lat1, lon1, lat2, lon2):
+    """ Calcule la distance entre deux points sur la surface de la Terre
+        en utilisant la formule de Haversine.
+        - Entrées : latitude et longitude en degrés
+        - Sortie : distance en kilomètres. """
+    R = 6371  # Rayon de la Terre 
+    # Conversion des écarts de latitude/longitude de degrés en radians.
+    dlat = np.radians(lat2 - lat1)
+    dlon = np.radians(lon2 - lon1)
+    # Formule de Haversine : a = sin²(dlat/2) + cos(lat1)·cos(lat2)·sin²(dlon/2)
+    a = np.sin(dlat / 2) ** 2 + np.cos(np.radians(lat1)) * np.cos(np.radians(lat2)) * np.sin(dlon / 2) ** 2
+    # c = angle central entre les deux points (en radians).
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+    # La distance = angle central × rayon terrestre.
+    return R * c
 
-def filtre_data(db):
-    # Description du dataset
-    print(f"Dimensions du dataset : {db.shape}")
-    print()
-    print(db.describe)
-    print()
-    print(f"Colonnes du dataset : \n{db.dtypes}")
-    print()
-    print(f"Premières lignes du dataset :\n{db.head()}")
+# ---------------------------------------------------------------------------
+# 3. Création du graphe vide G.
+#    - Un "sommet" (nœud) représentera une VILLE.
+#    - Une "arête" représentera un trajet entre deux villes,
+#      pondéré par la distance en km.
+# ---------------------------------------------------------------------------
+G = nx.Graph()
 
-    # Nettoyage rapide (suppression des lignes avec des valeurs manquantes)
-    db = db.dropna()
-    print(f"\nDimensions du dataset après nettoyage : {db.shape}")
-    print()
+# ---------------------------------------------------------------------------
+# 4. Fonction CreateGraphFromCSV : remplit le graphe G à partir du CSV.
+# ---------------------------------------------------------------------------
+def CreateGraphFromCSV():
+    """ Crée un graphe à partir du fichier CSV.
+        - Chaque ville devient un nœud, avec sa position (longitude, latitude).
+        - Chaque paire de villes est reliée par une arête dont le poids
+          est la distance de Haversine entre les deux villes. """
 
-    """
-    # Fonction affichage carte
-    def plot_map(df, title="Carte des villes de France"):
-        plt.figure(figsize=(10, 7))
-        plt.scatter(df['Longitude'], df['Latitude'], alpha=0.5)
-        plt.title(title)
-        plt.xlabel('Longitude')
-        plt.ylabel('Latitude')
-        plt.grid()
-        for i, txt in enumerate(df['Ville']):
-            plt.text(df['Longitude'].iloc[i] + 0.1, df['Latitude'].iloc[i], txt, fontsize=10)
-        plt.show()
-
-    # Lancement de l'affichage carte
-    plot_map(db)
-    """
-
-
-def haversine_distance(lat1, lon1, lat2, lon2):
-        # Rayon de la Terre en kilomètres
-        R = 6371.0
-
-        # Conversion des coordonnées en radians
-        lat1_rad = radians(lat1)
-        lon1_rad = radians(lon1)
-        lat2_rad = radians(lat2)
-        lon2_rad = radians(lon2)
-
-        # Calcul des différences
-        dlon = lon2_rad - lon1_rad
-        dlat = lat2_rad - lat1_rad
-
-        # Formule de Haversine
-        a = sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2)**2
-        c = 2 * atan2(sqrt(a), sqrt(1 - a))
-
-        distance = R * c
-        return distance
-
-
-def networkx_map(df):
-    # Fonction affichage carte avec NetworkX
-    G = nx.Graph()
-
-    # Ajout des villes au graphe
-    for index, row in df.iterrows():
+    # 4a. Ajout des SOMMETS : une ville = un nœud.
+    #     On stocke sa position dans l'attribut 'pos' (pour l'affichage).
+    for _, row in df.iterrows():
         G.add_node(row['Ville'], pos=(row['Longitude'], row['Latitude']))
 
-    # Ajout des arêtes (distances) entre les villes
-    for i in range(len(df)):
-        for j in range(i + 1, len(df)):
-            distance = haversine_distance(df.iloc[i]['Latitude'], df.iloc[i]['Longitude'],
-                                        df.iloc[j]['Latitude'], df.iloc[j]['Longitude'])
-            G.add_edge(df.iloc[i]['Ville'], df.iloc[j]['Ville'], weight=distance)
+    # 4b. Ajout des ARÊTES : on relie CHAQUE paire de villes entre elles.
+    #     Le graphe final est donc COMPLET (toutes les villes sont connectées).
+    villes = df['Ville'].tolist()
+    for i in range(len(villes)):
+        # On commence j à i+1 pour ne traiter chaque paire QU'UNE seule fois
+        # (pas de doublon (A,B) et (B,A)).
+        for j in range(i + 1, len(villes)):
+            vi, vj = villes[i], villes[j]
 
-    # Récupération des positions des noeuds
+            # Récupération des coordonnées (lat, lon) des deux villes.
+            lat1, lon1 = df.loc[df['Ville'] == vi, ['Latitude', 'Longitude']].values[0]
+            lat2, lon2 = df.loc[df['Ville'] == vj, ['Latitude', 'Longitude']].values[0]
+
+            # Distance réelle entre les deux villes.
+            distance = haversine(lat1, lon1, lat2, lon2)
+
+            # Création de l'arête avec son poids (la distance en km).
+            G.add_edge(vi, vj, weight=distance)
+
+# ---------------------------------------------------------------------------
+# 5. Appel de la fonction : le graphe G est construit.
+# ---------------------------------------------------------------------------
+CreateGraphFromCSV()
+
+# ---------------------------------------------------------------------------
+#    Il affiche toutes les villes et toutes les routes.
+# ---------------------------------------------------------------------------
+if __name__ == "__main__":
+    # Récupère la position (longitude, latitude) de chaque ville.
     pos = nx.get_node_attributes(G, 'pos')
-    print(pos)
-    # Dessin du graphe
-    plt.figure(figsize=(12, 7))
-    nx.draw(G, pos, node_size=50, alpha=0.7, edge_color='gray')
-    for i, txt in enumerate(df['Ville']):
-            plt.text(df['Longitude'].iloc[i] + 0.1, df['Latitude'].iloc[i], txt, fontsize=10)
-    plt.title("Carte des villes de France")
+    # Dessine le graphe complet : toutes les villes et toutes les routes.
+    nx.draw(G, pos, with_labels=True, node_size=50, font_size=8)
     plt.show()
+
+
+ 
+    
+
+
+  
+        
+
+
+
+    

@@ -1,80 +1,117 @@
-from networkx.algorithms.approximation import traveling_salesman_problem
+#Résolution avec l'Algorithme de Christofides :
+# Implémentez l'algorithme de Christofides pour trouver l’itinéraire
+# le plus court pour Théobald.
+# Quelle est la distance totale de votre solution presque optimale ?
+# Affichez l'itinéraire sur la carte du marchand.
+#  Expliquez les étapes de l'algorithme, et justifiez pourquoi cet
+# algorithme est pertinent dans ce contexte.
+#----------------------------------------------------------------------------------------------------------------
+from map import G
 import networkx as nx
-import pandas as pd
-import matplotlib.pyplot as plt
-from map import haversine_distance
-import numpy as np
-
-db = pd.read_csv("villes_france_lat_long.csv", sep=',')
-
-print(db)
-
-for _ in range(len(db)):
-    villes=list(zip(db['Latitude'], db["Longitude"]))
-    noms_villes=db['Ville'].tolist()
-dict_villes=db.set_index('Ville')[['Latitude','Longitude']].T.to_dict('list')
-print(f"\nDictionnaire : {dict_villes}")
-G = nx.Graph()
-
-for ville, (lat, lon) in dict_villes.items():
-    G.add_node(ville, pos=(lon,lat))
-
-for i in range(len(noms_villes)):
-    for j in range(i+1, len(noms_villes)):
-        c1 = noms_villes[i]
-        c2 = noms_villes[j]
-        d = haversine_distance(
-            dict_villes[c1][0], dict_villes[c1][1],
-            dict_villes[c2][0],dict_villes[c2][1]
-        )
-        G.add_edge(c1,c2,weight=d)
 
 
-pos = nx.get_node_attributes(G,'pos')
-
-circuit = traveling_salesman_problem(G, method=nx.approximation.christofides)
-print(circuit)
-
-# Distance totale
-total = sum(G[circuit[i]][circuit[i+1]]['weight'] for i in range(len(circuit)- 1 ))
-print(f"Distance : {total:.2f} km - garantie <= 1,5 x optimum")
-
-plt.figure(figsize=(12,7))
-nx.draw(
-    G,
-    pos,
-    with_labels=True,
-    node_size=50,
-    edge_color="gray",
-    width=1
-)
-plt.show()
-
-print(G)
-
-H = nx.DiGraph()
-H.add_nodes_from(G)
-for i in range(len(circuit)-1):
-    c1 = circuit[i]
-    c2 = circuit[i+1]
-    d = haversine_distance(
-        dict_villes[c1][0], dict_villes[c1][1],
-        dict_villes[c2][0],dict_villes[c2][1]
-    )
-    H.add_edge(c1,c2,weight=d)
-    print(H)
-print(H)
+def sommets_degre_impair(arbre):
+    """ Renvoie une liste des sommets de degré impair dans le graphe arbre. """
+    return [v for v, d in arbre.degree() if d % 2 == 1]
 
 
-pos = nx.get_node_attributes(G,'pos')
+def main():
+    # 1. Construire un arbre couvrant minimal (MST) à partir du graphe complet.
+    T = nx.minimum_spanning_tree(G, weight='weight')
 
-plt.figure(figsize=(12,7))
-nx.draw(
-    H,
-    pos,
-    with_labels=True,
-    node_size=50,
-    edge_color="gray",
-    width=1
-)
-plt.show()
+    # 2. Trouver les sommets de degré impair dans le MST.
+    sommets_impairs = sommets_degre_impair(T)
+
+    # 3. Trouver un appariement parfait minimum pour ces sommets de degré impair.
+
+    # 3a. Construire un sous-graphe avec les sommets de degré impair.
+    G_impair = G.subgraph(sommets_impairs)
+
+    # 3b. Trouver un appariement parfait de poids minimum.
+    matching = nx.min_weight_matching(G_impair, weight='weight')
+
+    # 3c. Ajouter les arêtes de l'appariement parfait au MST pour obtenir un graphe eulérien.
+
+    # On crée un multigraphe : il peut contenir PLUSIEURS arêtes entre deux mêmes sommets.
+    # C'est indispensable car l'appariement peut relier deux sommets déjà reliés dans le MST,
+    # créant ainsi deux arêtes "parallèles" entre eux.
+    G_eulerien = nx.MultiGraph()
+
+    # On copie d'abord tous les nœuds du MST dans le multigraphe.
+    G_eulerien.add_nodes_from(T.nodes(data=True))
+
+    # Puis on copie toutes les arêtes du MST (avec leur poids 'weight').
+    G_eulerien.add_edges_from(T.edges(data=True))
+
+    # On ajoute maintenant les arêtes de l'appariement parfait.
+    for u, v in matching:
+        poids = G[u][v]['weight']          # Distance entre u et v dans le graphe d'origine
+        G_eulerien.add_edge(u, v, weight=poids)
+
+    # Vérification : tous les sommets doivent maintenant avoir un degré PAIR.
+    # C'est la condition nécessaire pour qu'un circuit eulérien existe.
+    degres_pairs = all(d % 2 == 0 for _, d in G_eulerien.degree())
+    print("Tous les sommets ont un degré pair ?", degres_pairs)
+
+    # 4. Circuit Eulérien puis Hamiltonien : chaque arête 1 fois, puis chaque sommet 1 fois.
+
+    # 4a. Circuit eulérien : nx.eulerian_circuit renvoie la liste des arêtes (u, v)
+    #     du parcours qui traverse CHAQUE arête exactement une fois.
+    circuit_eulerien = list(nx.eulerian_circuit(G_eulerien))
+
+    # On transforme la liste d'arêtes en liste de villes.
+    # Le circuit eulérien est une suite d'arêtes (a, b), (b, c), ..., (z, a) :
+    # en prenant la première extrémité de chaque arête puis la seconde extrémité
+    # de la dernière, on obtient a -> b -> c -> ... -> a (boucle fermée).
+    circuit = [arete[0] for arete in circuit_eulerien] + [circuit_eulerien[-1][1]]
+
+    # 4b. Circuit hamiltonien : on parcourt le circuit eulérien et on SAUTE
+    #     toute ville déjà visitée. Chaque ville n'apparaît qu'une fois.
+    itineraire = []
+    villes_visitees = set()
+
+    for ville in circuit:
+        if ville not in villes_visitees:
+            itineraire.append(ville)          # On garde la ville seulement si inédite
+            villes_visitees.add(ville)
+
+    # On referme la boucle en revenant à la ville de départ.
+    itineraire.append(itineraire[0])
+
+    # 5. Distance totale + affichage de l'itinéraire sur la carte.
+
+    # 5a. Calcul de la distance totale de l'itinéraire.
+    distance_totale = 0
+    for i in range(len(itineraire) - 1):
+        u, v = itineraire[i], itineraire[i + 1]
+        distance_totale += G[u][v]['weight']    # On additionne le poids de chaque étape
+
+    print("\nItinéraire de Théobald :")
+    print(" -> ".join(itineraire))
+    print(f"\nDistance totale (approximation de Christofides) : {distance_totale:.2f} km")
+
+    # 5b. Affichage de l'itinéraire sur la carte du marchand.
+    import matplotlib.pyplot as plt
+
+    # Positions des villes (longitude, latitude) stockées dans le graphe.
+    pos = nx.get_node_attributes(G, 'pos')
+
+    # On trace d'abord TOUTES les villes et toutes les routes (fond de carte).
+    nx.draw(G, pos, with_labels=True, node_size=50, font_size=8,
+            edge_color='lightgray', node_color='skyblue')
+
+    # On superpose l'itinéraire trouvé en rouge, plus épais, pour le mettre en valeur.
+    aretes_itineraire = [(itineraire[i], itineraire[i + 1])
+                         for i in range(len(itineraire) - 1)]
+    H = nx.DiGraph()
+    H.add_edges_from(aretes_itineraire)
+    nx.draw_networkx_edges(H, pos, edge_color='red', width=2, arrowstyle='-|>', arrowsize=10)
+
+    plt.title(f"Tournée du marchand — {distance_totale:.2f} km")
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()
+
+
